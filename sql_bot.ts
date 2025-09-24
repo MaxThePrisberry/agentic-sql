@@ -1,15 +1,26 @@
 import { GoogleGenAI } from "@google/genai";
 import promptSync from "prompt-sync";
+import { createClient } from "@supabase/supabase-js";
 
 // The client gets the API key from the environment variable `GEMINI_API_KEY`.
 const ai = new GoogleGenAI({});
 const prompt = new promptSync();
 
+const supabaseUrl = 'https://rzstloqrozthdjyyycjl.supabase.co';
+const supabaseKey = process.env.SUPABASE_API_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 async function main() {
+  /* const { data, error } = await supabase
+    .from("testingtable")
+    .select("*");
+  console.log(data);
   const question = prompt("What message you got for me?\n", "Print out just the word 'banana'.");
   if (question) {
     await queryGemini(question);
-  }
+  } */
+
+    
 }
 
 async function queryGemini(question: string) {
