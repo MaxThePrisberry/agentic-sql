@@ -37,20 +37,18 @@ Only if in the conversation so far you already have enough information returned 
 */
 
 
+
+
 async function main() {
+
+  const data = await supabase.rpc("get_database_schema");
+  console.log(data.data);
+
   const question = prompt("Enter a question: ", "Print out just the word 'banana'.");
   let context : ContentListUnion = [{
     role: "user",
     parts: [{ text: question }]
   }];
-
-  while(true) {
-    const response = await queryGemini(question);
-    if (response.final_answer) {
-      console.log(response.final_answer);
-      break;
-    }
-  }
 
 }
 
