@@ -10,21 +10,18 @@ const supabaseUrl = 'https://rzstloqrozthdjyyycjl.supabase.co';
 const supabaseKey = process.env.SUPABASE_API_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-/*
-You are an SQL bot. You are given a question and you need to answer it.
+function createSystemPrompt(tables : string) {
+  return `You are an SQL bot. You are given a question and you need to answer it.
 You are working with the following tables:
 ${tables}
 
-The user has asked "${question}".
-
-{length(conversation) > 0 ? "The conversation so far is: ${conversation}" : ""}
 
 Run JSON queries until you have enough information to give a final answer.
 
 To run a JSON query, respond with exactly this format:
 
 {
-  "query": "SELECT * FROM ${table} WHERE ${condition}"
+  "query": "SELECT * FROM table WHERE condition"
 }
 
 For example, if you don't have any information yet, respond with a query to get started.
@@ -34,7 +31,9 @@ Only if in the conversation so far you already have enough information returned 
 { 
   "final_answer": "The final answer to the user's question"
 }
-*/
+  
+The user's question is: `
+}
 
 
 
@@ -47,9 +46,20 @@ async function main() {
   const question = prompt("Enter a question: ", "Print out just the word 'banana'.");
   let context : ContentListUnion = [{
     role: "user",
-    parts: [{ text: question }]
+    parts: [{ text: createSystemPrompt("tables") + question }]
   }];
 
+  while(true) {
+    const response = await queryGemini(context);
+    if (response && response.final_answer) {
+      console.log(response.final_answer);
+      break;
+    }
+    context.push({
+      role: "user",
+      parts: [{ text: response ? response.query : "" }]
+    });
+  }
 }
 
 async function querySupabase(query : String) {
@@ -61,16 +71,36 @@ async function querySupabase(query : String) {
 
 async function queryGemini(context : ContentListUnion) {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: context,
-      config: {
-        thinkingConfig: {
-          thinkingBudget: 0
+    while(true) {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: context,
+        config: {
+          thinkingConfig: {
+            thinkingBudget: 0
+          }
         }
+      });
+
+      if (!response.text) {
+        continue;
       }
-    });
-    console.log(response.text);
+
+      try { // test that it's a valid JSON object
+        let trimmedResponse = response.text.match(/\{.*\}/s);
+        if (trimmedResponse && trimmedResponse.length === 0) {
+          continue;
+        }
+        let jsonResponse = JSON.parse(response.text);
+        if (jsonResponse && jsonResponse.query) {
+          console.log("Query: ", jsonResponse.query);
+        }
+        return jsonResponse;
+      } catch (error) {
+        continue;
+      }
+    }
+    
   } catch (error) {
     console.error("Error querying Gemini:", error);
   }
