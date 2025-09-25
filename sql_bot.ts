@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { ContentListUnion, GoogleGenAI, Type } from "@google/genai";
 import promptSync from "prompt-sync";
 import { createClient } from "@supabase/supabase-js";
 
@@ -34,12 +34,15 @@ Only if in the conversation so far you already have enough information returned 
 { 
   "final_answer": "The final answer to the user's question"
 }
-
 */
 
 
 async function main() {
   const question = prompt("Enter a question: ", "Print out just the word 'banana'.");
+  let context : ContentListUnion = [{
+    role: "user",
+    parts: [{ text: question }]
+  }];
 
   while(true) {
     const response = await queryGemini(question);
@@ -48,7 +51,7 @@ async function main() {
       break;
     }
   }
-  
+
 }
 
 async function querySupabase(query : String) {
@@ -58,16 +61,11 @@ async function querySupabase(query : String) {
   return JSON.stringify(data[0].result);
 }
 
-async function queryGemini(question: string) {
+async function queryGemini(context : ContentListUnion) {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash-exp",
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: question }]
-        }
-      ],
+      contents: context,
       config: {
         thinkingConfig: {
           thinkingBudget: 0
