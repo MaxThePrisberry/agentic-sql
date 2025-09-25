@@ -66,7 +66,7 @@ async function main() {
       parts: [{ text: response ? response.query : "" }]
     });
     let sql_response = await querySupabase(response.query);
-    console.log("SQL Response: ", sql_response);
+    console.log("SQL Response: ", sql_response, "\n");
     context.push({
       role: "user",
       parts: [{ text: sql_response }]
@@ -103,6 +103,7 @@ async function queryGemini(context : ContentListUnion) {
         if (!trimmedResponse) {
           if (response.text.startsWith("SELECT")) { // Accept raw SQL queries cause gemini flash is a bit dum
             let jsonResponse = { query: response.text };
+            console.log("Querying... ", jsonResponse.query);
             return jsonResponse;
           }
           continue; // if it's not a valid JSON object, try again
