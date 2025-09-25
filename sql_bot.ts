@@ -10,10 +10,43 @@ const supabaseUrl = 'https://rzstloqrozthdjyyycjl.supabase.co';
 const supabaseKey = process.env.SUPABASE_API_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+/*
+You are an SQL bot. You are given a question and you need to answer it.
+You are working with the following tables:
+${tables}
+
+The user has asked "${question}".
+
+{length(conversation) > 0 ? "The conversation so far is: ${conversation}" : ""}
+
+Run JSON queries until you have enough information to give a final answer.
+
+To run a JSON query, respond with exactly this format:
+
+{
+  "query": "SELECT * FROM ${table} WHERE ${condition}"
+}
+
+For example, if you don't have any information yet, respond with a query to get started.
+
+Only if in the conversation so far you already have enough information returned from those JSON queries to give a final answer, respond with:
+
+{ 
+  "final_answer": "The final answer to the user's question"
+}
+
+*/
+
+
 async function main() {
   const question = prompt("Enter a question: ", "Print out just the word 'banana'.");
-  if (question) {
-    await queryGemini(question);
+
+  while(true) {
+    const response = await queryGemini(question);
+    if (response.final_answer) {
+      console.log(response.final_answer);
+      break;
+    }
   }
   
 }
