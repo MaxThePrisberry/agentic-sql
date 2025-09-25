@@ -41,12 +41,11 @@ The user's question is: `
 async function main() {
 
   const data = await supabase.rpc("get_database_schema");
-  console.log(data.data);
 
   const question = prompt("Enter a question: ", "Print out just the word 'banana'.");
   let context : ContentListUnion = [{
     role: "user",
-    parts: [{ text: createSystemPrompt("tables") + question }]
+    parts: [{ text: createSystemPrompt(JSON.stringify(data.data)) + question }]
   }];
 
   while(true) {
@@ -56,8 +55,12 @@ async function main() {
       break;
     }
     context.push({
-      role: "user",
+      role: "model",
       parts: [{ text: response ? response.query : "" }]
+    });
+    context.push({
+      role: "user",
+      parts: [{ text: await querySupabase(response.query)}]
     });
   }
 }
