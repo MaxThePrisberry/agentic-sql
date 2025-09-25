@@ -30,30 +30,29 @@ Only if in the conversation so far you already have enough information returned 
 
 { 
   "final_answer": "The final answer to the user's question"
-}`
+}
+  
+The user's question is: `
 }
 
 
 async function main() {
   const question = prompt("Enter a question: ", "Print out just the word 'banana'.");
-  let context : ContentListUnion = [
-    {
-      role: "system",
-      parts: [{ text: createSystemPrompt(tables) }]
-    },
-      {
-      role: "user",
-      parts: [{ text: question }]
-    }
-  ];
+  let context : ContentListUnion = [{
+    role: "user",
+    parts: [{ text: createSystemPrompt("tables") + question }]
+  }];
 
   while(true) {
     const response = await queryGemini(context);
-    if (response.final_answer) {
+    if (response && response.final_answer) {
       console.log(response.final_answer);
       break;
     }
-    context.push(response);
+    context.push({
+      role: "user",
+      parts: [{ text: response ? response.query : "" }]
+    });
   }
 
 }
@@ -67,16 +66,36 @@ async function querySupabase(query : String) {
 
 async function queryGemini(context : ContentListUnion) {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: context,
-      config: {
-        thinkingConfig: {
-          thinkingBudget: 0
+    while(true) {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: context,
+        config: {
+          thinkingConfig: {
+            thinkingBudget: 0
+          }
         }
+      });
+
+      if (!response.text) {
+        continue;
       }
-    });
-    console.log(response.text);
+
+      try { // test that it's a valid JSON object
+        let trimmedResponse = response.text.match(/\{.*\}/s);
+        if (trimmedResponse && trimmedResponse.length === 0) {
+          continue;
+        }
+        let jsonResponse = JSON.parse(response.text);
+        if (jsonResponse && jsonResponse.query) {
+          console.log("Query: ", jsonResponse.query);
+        }
+        return jsonResponse;
+      } catch (error) {
+        continue;
+      }
+    }
+    
   } catch (error) {
     console.error("Error querying Gemini:", error);
   }
