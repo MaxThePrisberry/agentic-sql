@@ -10,7 +10,7 @@ const supabaseUrl = 'https://rzstloqrozthdjyyycjl.supabase.co';
 const supabaseKey = process.env.SUPABASE_API_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-function createSystemPrompt(tables : string) {
+function createSystemPrompt(tables: string) {
   return `You are an SQL bot. You are given a question and you need to answer it.
 You are working with the following tables:
 ${tables}
@@ -47,43 +47,46 @@ async function main() {
 
   const data = await supabase.rpc("get_database_schema");
 
-  const question = prompt("Enter a question: ", "Give me all the data you can see.");
+  while (true) {
+    const question = prompt("Enter a question: ");
+    if (!question) break;
 
-  console.log("\nLet me look into that!\n\n")
-  let context : ContentListUnion = [{
-    role: "user",
-    parts: [{ text: createSystemPrompt(JSON.stringify(data.data)) + question}]
-  }];
-
-  while(true) {
-    const response = await queryGemini(context);
-    if (response && response.final_answer) {
-      console.log("\n\n" + response.final_answer + "\n");
-      break;
-    }
-    context.push({
-      role: "model",
-      parts: [{ text: response ? response.query : "" }]
-    });
-    let sql_response = await querySupabase(response.query);
-    console.log("SQL Response: ", sql_response, "\n");
-    context.push({
+    console.log("\nLet me look into that!\n\n")
+    let context: ContentListUnion = [{
       role: "user",
-      parts: [{ text: sql_response }]
-    });
+      parts: [{ text: createSystemPrompt(JSON.stringify(data.data)) + question }]
+    }];
+
+    while (true) {
+      const response = await queryGemini(context);
+      if (response && response.final_answer) {
+        console.log("\n\n" + response.final_answer + "\n");
+        break;
+      }
+      context.push({
+        role: "model",
+        parts: [{ text: response ? response.query : "" }]
+      });
+      let sql_response = await querySupabase(response.query);
+      console.log("SQL Response: ", sql_response, "\n");
+      context.push({
+        role: "user",
+        parts: [{ text: sql_response }]
+      });
+    }
   }
 }
 
-async function querySupabase(query : String) {
+async function querySupabase(query: String) {
   const { data, error } = await supabase.rpc("execute_select_query", {
     query_string: query
   });
   return JSON.stringify(data[0].result);
 }
 
-async function queryGemini(context : ContentListUnion) {
+async function queryGemini(context: ContentListUnion) {
   try {
-    while(true) {
+    while (true) {
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: context,
@@ -118,7 +121,7 @@ async function queryGemini(context : ContentListUnion) {
         continue; // if it's not a valid JSON object, try again
       }
     }
-    
+
   } catch (error) {
     console.error("Error querying Gemini:", error);
   }
