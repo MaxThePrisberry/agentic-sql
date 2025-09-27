@@ -21,6 +21,7 @@ Run JSON queries until you have enough information to give a final answer.
 To run a JSON query, respond with exactly this format:
 
 {
+  "reasoning": "Reasoning about the query to be run"
   "query": "SELECT * FROM table WHERE condition"
 }
 
@@ -29,7 +30,8 @@ For example, if you don't have any information yet, respond with a query to get 
 Only if in the conversation so far you already have enough information returned from those JSON queries to give a final answer, respond with:
 
 { 
-  "final_answer": "The final answer to the user's question"
+  "reasoning": "Reasoning about the answer you'll give",
+  "final_answer": "The final answer to the user's most recent question"
 }
 
 You'll be returned the results of each query, so you can make many in a row if you need to. When in doubt, make a query so you can get info, instead of assuming anything.
@@ -47,16 +49,17 @@ The user's question is: `
 async function main() {
 
   const data = await supabase.rpc("get_database_schema");
+  let context: ContentListUnion = [];
 
   while (true) {
     const question = prompt("Enter a question: ");
     if (!question) break;
 
     console.log("\nLet me look into that!\n\n")
-    let context: ContentListUnion = [{
+    context.push({
       role: "user",
       parts: [{ text: createSystemPrompt(JSON.stringify(data.data)) + question }]
-    }];
+    });
 
     while (true) {
       const response = await queryGemini(context);
